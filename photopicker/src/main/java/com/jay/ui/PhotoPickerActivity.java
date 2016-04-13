@@ -1,6 +1,7 @@
 package com.jay.ui;
 
 import android.app.Activity;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
@@ -82,6 +83,7 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
     private FloatingActionButton fab;
     private TextView toolbarCustomView;
     private File takePhotoFile;
+    private ContentResolver contentResolver;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -98,7 +100,7 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
                     resultPhotoUris = new ArrayList<>();
                 }
                 maxSize = bundle.getInt(MAX_SELECT_SIZE, 0);
-            }else{
+            } else {
                 resultPhotoUri = bundle.getString(SELECT_RESULTS);
             }
         }
@@ -114,10 +116,10 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
                 toolbarCustomView = new TextView(this);
                 toolbarCustomView.setTextColor(Color.BLACK);
                 toolbarCustomView.setTextSize(20);
-                toolbarCustomView.setText(String.format("%d/%d",resultPhotoUris.size(),maxSize));
+                toolbarCustomView.setText(String.format("%d/%d", resultPhotoUris.size(), maxSize));
                 ActionBar.LayoutParams params = new ActionBar.LayoutParams(ActionBar.LayoutParams.WRAP_CONTENT, ActionBar.LayoutParams.WRAP_CONTENT);
                 params.gravity = Gravity.CENTER_HORIZONTAL;
-                actionBar.setCustomView(toolbarCustomView,params);
+                actionBar.setCustomView(toolbarCustomView, params);
                 actionBar.setDisplayShowCustomEnabled(true);
             }
         }
@@ -133,7 +135,7 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
         if (rvContainer != null) {
             rvContainer.setHasFixedSize(true);
             rvContainer.setLayoutManager(new GridLayoutManager(this, 3));
-            photoListAdapter = new PhotoListAdapter(this,null);
+            photoListAdapter = new PhotoListAdapter(this, null);
             rvContainer.setAdapter(photoListAdapter);
         }
 
@@ -144,7 +146,7 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
                 exitAndOk();
             }
         });
-
+        contentResolver = getContentResolver();
         getSupportLoaderManager().initLoader(0, null, this);
     }
 
@@ -154,7 +156,7 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
         CursorLoader cursorLoader = new CursorLoader(
                 this,
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                new String[]{MediaStore.Images.Media.DATA, MediaStore.Images.Media.BUCKET_DISPLAY_NAME},
+                new String[]{MediaStore.Images.Media._ID, MediaStore.Images.Media.DATA, MediaStore.Images.Media.BUCKET_DISPLAY_NAME},
                 "mime_type=? or mime_type=?" + (isShowGif ? "or mime_type=?" : ""),
                 isShowGif ? new String[]{"image/jpeg", "image/png", "image/gif"} : new String[]{"image/jpeg", "image/png"},
                 MediaStore.Images.Media.DATE_ADDED + " DESC"
@@ -164,17 +166,32 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
 
     @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
-        boolean b = data.moveToFirst();
-        List<Photo> allPhotoUris = new ArrayList<>();
-        if (!photoDirMap.containsKey(ALL_PHOTO_DIR_NAME)) {
-            photoDirMap.put(ALL_PHOTO_DIR_NAME, allPhotoUris);
-        }
-        if (!menuDirs.contains(ALL_PHOTO_DIR_NAME)) {
-            menuDirs.add(ALL_PHOTO_DIR_NAME);
-        }
-        if (b) {
+        if (data.moveToFirst()) {
+            List<Photo> allPhotoUris = new ArrayList<>();
+            if (!photoDirMap.containsKey(ALL_PHOTO_DIR_NAME)) {
+                photoDirMap.put(ALL_PHOTO_DIR_NAME, allPhotoUris);
+            }
+            if (!menuDirs.contains(ALL_PHOTO_DIR_NAME)) {
+                menuDirs.add(ALL_PHOTO_DIR_NAME);
+            }
             List<Photo> photos;
             do {
+                String _id = data.getString(data.getColumnIndex(MediaStore.Images.ImageColumns._ID));
+                Cursor cursor = contentResolver.query(
+                        MediaStore.Images.Thumbnails.EXTERNAL_CONTENT_URI,
+                        new String[]{MediaStore.Images.Thumbnails.DATA},
+                        MediaStore.Images.Thumbnails.IMAGE_ID + "=?",
+                        new String[]{_id}, null);
+                String thumbnailsUri = null;
+                if (cursor != null) {
+                    try {
+                        if (cursor.moveToFirst()) {
+                            thumbnailsUri = cursor.getString(0);
+                        }
+                    } finally {
+                        cursor.close();
+                    }
+                }
                 String photoDir = data.getString(data.getColumnIndex(MediaStore.Images.ImageColumns.BUCKET_DISPLAY_NAME));
                 String photoUri = data.getString(data.getColumnIndex(MediaStore.Images.Media.DATA));
                 if (!photoDirMap.containsKey(photoDir)) {
@@ -185,16 +202,18 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
                     photos = photoDirMap.get(photoDir);
                 }
                 Photo photo = new Photo();
+                photo.thumbnailsUri = thumbnailsUri;
                 photo.uri = photoUri;
                 photos.add(photo);
                 allPhotoUris.add(photo);
             } while (data.moveToNext());
+            notifyChangePhotoList(ALL_PHOTO_DIR_NAME, allPhotoUris);
         }
-        notifyChangePhotoList(ALL_PHOTO_DIR_NAME, allPhotoUris);
+    }
 
+    /*private void addDirMenu() {
         Menu menu = toolbar.getMenu();
         SubMenu menuDir;
-
         try {
             menuDir = menu.getItem(1).getSubMenu();
             menuDir.clear();
@@ -205,18 +224,13 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
         for (String text : menuDirs) {
             menuDir.add(Menu.NONE, Menu.FIRST + 1, 0, text);
         }
-    }
+    }*/
 
     private void notifyChangePhotoList(String subTitle, List<Photo> photos) {
         currentDisplayPhotos = photos;
         toolbar.setSubtitle(subTitle);
-        if (photoListAdapter == null) {
-            photoListAdapter = new PhotoListAdapter(this,photos);
-            rvContainer.setAdapter(photoListAdapter);
-        }else{
-            photoListAdapter.setData(photos);
-            photoListAdapter.notifyDataSetChanged();
-        }
+        photoListAdapter.setData(photos);
+        photoListAdapter.notifyDataSetChanged();
     }
 
     @Override
@@ -228,6 +242,8 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuItem menuCamera = menu.add(Menu.NONE, R.id.menu_camera, 0, "拍照").setIcon(R.drawable.ic_photo_camera_black_24dp);
         MenuItemCompat.setShowAsAction(menuCamera, MenuItemCompat.SHOW_AS_ACTION_ALWAYS);
+        SubMenu menuDir = menu.addSubMenu(Menu.NONE, R.id.menu_dir, 1, "目录").setIcon(R.drawable.ic_folder_open_black_24dp);
+        MenuItemCompat.setShowAsAction(menuDir.getItem(), MenuItemCompat.SHOW_AS_ACTION_ALWAYS);
         super.onCreateOptionsMenu(menu);
         return true;
     }
@@ -242,11 +258,17 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
             if (takePhotoFile != null) {
                 takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT,
                         Uri.fromFile(takePhotoFile));
-                startActivityForResult(takePictureIntent,TAKE_PHOTO);
-            }else{
+                startActivityForResult(takePictureIntent, TAKE_PHOTO);
+            } else {
                 showSnackBar("打开相机失败");
             }
-        } else {
+        } else if(item.getItemId() == R.id.menu_dir){
+            SubMenu subMenu = item.getSubMenu();
+            subMenu.clear();
+            for (String text : menuDirs) {
+                subMenu.add(Menu.NONE, Menu.FIRST + 1, 0, text);
+            }
+        }else {
             String menuTitle = item.getTitle().toString();
             List<Photo> photos = photoDirMap.get(menuTitle);
             if (photos != null) {
@@ -256,7 +278,7 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
         return super.onOptionsItemSelected(item);
     }
 
-    private File createImageFile(){
+    private File createImageFile() {
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         String imageFileName = "IMG_" + timeStamp;
         File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
@@ -267,7 +289,7 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
         }
         File file = null;
         try {
-            file = File.createTempFile(imageFileName,".jpg",storageDir);
+            file = File.createTempFile(imageFileName, ".jpg", storageDir);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -300,6 +322,16 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
         }
     }
 
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+    }
+
     public void notifyMediaUpdate(File file) {
         Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
         Uri contentUri = Uri.fromFile(file);
@@ -311,14 +343,15 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
         Intent data = new Intent();
         if (isMultiSelect) {
             data.putExtra(SELECT_RESULTS_ARRAY, resultPhotoUris);
-        }else{
+        } else {
             data.putExtra(SELECT_RESULTS, resultPhotoUri);
         }
-        setResult(RESULT_OK,data);
+        setResult(RESULT_OK, data);
         finish();
     }
 
 //--------------------------------------------------------------------------------------------------
+
     /**
      * Adapter
      */
@@ -332,6 +365,7 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
             }
             this.activity = activity;
         }
+
         @Override
         public int getItemCount() {
             return photos.size();
@@ -341,6 +375,7 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
             photos.clear();
             photos.addAll(photoUris);
         }
+
         @Override
         public PhotoVH onCreateViewHolder(ViewGroup parent, int viewType) {
             Context context = parent.getContext();
@@ -352,12 +387,13 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
         public void onBindViewHolder(PhotoVH holder, int position) {
             ImageView photoView = holder.getView(R.id.ivPhoto);
             Photo photo = photos.get(position);
-            Glide.with(activity).load(photo.uri).centerCrop().crossFade().into(photoView);
+            Glide.with(activity).load(photo.getShowUri()).centerCrop().crossFade().into(photoView);
             CheckBox checkBox = holder.getView(R.id.checkbox);
             checkBox.setChecked(photo.isChecked);
             checkBox.setTag(position);
             checkBox.setOnClickListener(checkedChangeListener);
         }
+
         private View.OnClickListener checkedChangeListener = new View.OnClickListener() {
             private Photo lastPhoto;
             private int lastPosition;
@@ -387,7 +423,7 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
                     if (checked) {
                         resultPhotoUri = uri;
                     }
-                }else{
+                } else {
                     //多选
                     if (checked) {
                         //添加选中的图片Uri,条件:选中 + 结果集合中没有此Uri
@@ -400,13 +436,14 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
                             resultPhotoUris.remove(uri);
                         }
                     }
-                    toolbarCustomView.setText(String.format("%d/%d",resultPhotoUris.size(),maxSize));
+                    toolbarCustomView.setText(String.format("%d/%d", resultPhotoUris.size(), maxSize));
                 }
             }
         };
 
         class PhotoVH extends RecyclerView.ViewHolder {
             private SparseArray<View> views = new SparseArray<>();
+
             public PhotoVH(View itemView) {
                 super(itemView);
             }
@@ -427,6 +464,6 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
     }
 
     private void showSnackBar(CharSequence text) {
-        Snackbar.make(fab,text,Snackbar.LENGTH_SHORT).show();
+        Snackbar.make(fab, text, Snackbar.LENGTH_SHORT).show();
     }
 }
