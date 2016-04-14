@@ -1,7 +1,6 @@
 package com.jay.ui;
 
 import android.app.Activity;
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
@@ -10,7 +9,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
-import android.support.annotation.IdRes;
 import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -22,10 +20,11 @@ import android.support.v4.util.ArrayMap;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
-import android.util.SparseArray;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -38,6 +37,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.jay.ui.entity.Photo;
 
 import java.io.File;
@@ -46,6 +46,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -78,12 +79,11 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
     private ArrayList<String> menuDirs = new ArrayList<>();//目录集合,给菜单显示用的
     private Map<String, List<Photo>> photoDirMap = new ArrayMap<>();//图片目录名与目录下图片集合Map
 
-    private ArrayList<String> resultPhotoUris;//选择的图片,如果是多选
-    private String resultPhotoUri;//选择的图片,如果是单选
+    private ArrayList<String> resultPhotoUris;//选择的图片,如果是多选 - 需要保存此数据
+    private String resultPhotoUri;//选择的图片,如果是单选 - 需要保存此数据
     private FloatingActionButton fab;
     private TextView toolbarCustomView;
     private File takePhotoFile;
-    private ContentResolver contentResolver;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -116,7 +116,7 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
                 toolbarCustomView = new TextView(this);
                 toolbarCustomView.setTextColor(Color.BLACK);
                 toolbarCustomView.setTextSize(20);
-                toolbarCustomView.setText(String.format("%d/%d", resultPhotoUris.size(), maxSize));
+                toolbarCustomView.setText(String.format(Locale.getDefault(),"%d/%d", resultPhotoUris.size(), maxSize));
                 ActionBar.LayoutParams params = new ActionBar.LayoutParams(ActionBar.LayoutParams.WRAP_CONTENT, ActionBar.LayoutParams.WRAP_CONTENT);
                 params.gravity = Gravity.CENTER_HORIZONTAL;
                 actionBar.setCustomView(toolbarCustomView, params);
@@ -135,6 +135,7 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
         if (rvContainer != null) {
             rvContainer.setHasFixedSize(true);
             rvContainer.setLayoutManager(new GridLayoutManager(this, 3));
+            rvContainer.setItemAnimator(new DefaultItemAnimator());
             photoListAdapter = new PhotoListAdapter(this, null);
             rvContainer.setAdapter(photoListAdapter);
         }
@@ -146,7 +147,6 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
                 exitAndOk();
             }
         });
-        contentResolver = getContentResolver();
         getSupportLoaderManager().initLoader(0, null, this);
     }
 
@@ -176,22 +176,22 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
             }
             List<Photo> photos;
             do {
-                String _id = data.getString(data.getColumnIndex(MediaStore.Images.ImageColumns._ID));
-                Cursor cursor = contentResolver.query(
-                        MediaStore.Images.Thumbnails.EXTERNAL_CONTENT_URI,
-                        new String[]{MediaStore.Images.Thumbnails.DATA},
-                        MediaStore.Images.Thumbnails.IMAGE_ID + "=?",
-                        new String[]{_id}, null);
-                String thumbnailsUri = null;
-                if (cursor != null) {
-                    try {
-                        if (cursor.moveToFirst()) {
-                            thumbnailsUri = cursor.getString(0);
-                        }
-                    } finally {
-                        cursor.close();
-                    }
-                }
+//                String _id = data.getString(data.getColumnIndex(MediaStore.Images.ImageColumns._ID));
+//                Cursor cursor = contentResolver.query(
+//                        MediaStore.Images.Thumbnails.EXTERNAL_CONTENT_URI,
+//                        new String[]{MediaStore.Images.Thumbnails.DATA},
+//                        MediaStore.Images.Thumbnails.IMAGE_ID + "=?",
+//                        new String[]{_id}, null);
+//                String thumbnailsUri = null;
+//                if (cursor != null) {
+//                    try {
+//                        if (cursor.moveToFirst()) {
+//                            thumbnailsUri = cursor.getString(0);
+//                        }
+//                    } finally {
+//                        cursor.close();
+//                    }
+//                }
                 String photoDir = data.getString(data.getColumnIndex(MediaStore.Images.ImageColumns.BUCKET_DISPLAY_NAME));
                 String photoUri = data.getString(data.getColumnIndex(MediaStore.Images.Media.DATA));
                 if (!photoDirMap.containsKey(photoDir)) {
@@ -202,35 +202,21 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
                     photos = photoDirMap.get(photoDir);
                 }
                 Photo photo = new Photo();
-                photo.thumbnailsUri = thumbnailsUri;
+//                photo.thumbnailsUri = thumbnailsUri;
                 photo.uri = photoUri;
                 photos.add(photo);
                 allPhotoUris.add(photo);
             } while (data.moveToNext());
             notifyChangePhotoList(ALL_PHOTO_DIR_NAME, allPhotoUris);
+
         }
     }
-
-    /*private void addDirMenu() {
-        Menu menu = toolbar.getMenu();
-        SubMenu menuDir;
-        try {
-            menuDir = menu.getItem(1).getSubMenu();
-            menuDir.clear();
-        } catch (IndexOutOfBoundsException e) {
-            menuDir = menu.addSubMenu(Menu.NONE, R.id.menu_dir, 0, "目录").setIcon(R.drawable.ic_folder_open_black_24dp);
-            MenuItemCompat.setShowAsAction(menuDir.getItem(), MenuItemCompat.SHOW_AS_ACTION_ALWAYS);
-        }
-        for (String text : menuDirs) {
-            menuDir.add(Menu.NONE, Menu.FIRST + 1, 0, text);
-        }
-    }*/
-
     private void notifyChangePhotoList(String subTitle, List<Photo> photos) {
         currentDisplayPhotos = photos;
         toolbar.setSubtitle(subTitle);
         photoListAdapter.setData(photos);
         photoListAdapter.notifyDataSetChanged();
+
     }
 
     @Override
@@ -260,7 +246,7 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
                         Uri.fromFile(takePhotoFile));
                 startActivityForResult(takePictureIntent, TAKE_PHOTO);
             } else {
-                showSnackBar("打开相机失败");
+                showSnackBar(getString(R.string.open_camera_fail));
             }
         } else if(item.getItemId() == R.id.menu_dir){
             SubMenu subMenu = item.getSubMenu();
@@ -279,7 +265,7 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
     }
 
     private File createImageFile() {
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
         String imageFileName = "IMG_" + timeStamp;
         File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
         if (!storageDir.exists()) {
@@ -325,11 +311,34 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
+        outState.putBoolean(IS_MULTI_SELECT, isMultiSelect);
+        outState.putBoolean(IS_SHOW_GIF, isShowGif);
+        outState.putInt(MAX_SELECT_SIZE, maxSize);
+        outState.putString("takePhotoPath",takePhotoFile.getAbsolutePath());
+        if (isMultiSelect) {
+            outState.putStringArrayList(SELECT_RESULTS_ARRAY,resultPhotoUris);
+        }else{
+            outState.putString(SELECT_RESULTS,resultPhotoUri);
+        }
     }
 
     @Override
     protected void onRestoreInstanceState(Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
+        isMultiSelect = savedInstanceState.getBoolean(IS_MULTI_SELECT, false);
+        isShowGif = savedInstanceState.getBoolean(IS_SHOW_GIF, false);
+        maxSize = savedInstanceState.getInt(MAX_SELECT_SIZE, 0);
+        String takePhotoPath = savedInstanceState.getString("takePhotoPath");
+        if (!TextUtils.isEmpty(takePhotoPath)) {
+            takePhotoFile = new File(takePhotoPath);
+        }else{
+            showSnackBar(getString(R.string.photo_save_fail));
+        }
+        if (isMultiSelect) {
+            resultPhotoUris = savedInstanceState.getStringArrayList(SELECT_RESULTS_ARRAY);
+        }else{
+            resultPhotoUri = savedInstanceState.getString(SELECT_RESULTS);
+        }
     }
 
     public void notifyMediaUpdate(File file) {
@@ -385,10 +394,10 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
 
         @Override
         public void onBindViewHolder(PhotoVH holder, int position) {
-            ImageView photoView = holder.getView(R.id.ivPhoto);
+            ImageView photoView = holder.ivPhoto;
             Photo photo = photos.get(position);
-            Glide.with(activity).load(photo.getShowUri()).centerCrop().crossFade().into(photoView);
-            CheckBox checkBox = holder.getView(R.id.checkbox);
+            Glide.with(activity).load(photo.getShowUri()).thumbnail(.1f).centerCrop().crossFade().diskCacheStrategy(DiskCacheStrategy.RESULT).into(photoView);
+            CheckBox checkBox = holder.checkbox;
             checkBox.setChecked(photo.isChecked);
             checkBox.setTag(position);
             checkBox.setOnClickListener(checkedChangeListener);
@@ -436,31 +445,26 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
                             resultPhotoUris.remove(uri);
                         }
                     }
-                    toolbarCustomView.setText(String.format("%d/%d", resultPhotoUris.size(), maxSize));
+                    toolbarCustomView.setText(String.format(Locale.getDefault(),"%d/%d", resultPhotoUris.size(), maxSize));
                 }
             }
         };
 
         class PhotoVH extends RecyclerView.ViewHolder {
-            private SparseArray<View> views = new SparseArray<>();
+            ImageView ivPhoto;
+            CheckBox checkbox;
 
             public PhotoVH(View itemView) {
                 super(itemView);
+                ivPhoto = (ImageView) itemView.findViewById(R.id.ivPhoto);
+                checkbox = (CheckBox) itemView.findViewById(R.id.checkbox);
             }
 
-            @SuppressWarnings("unchecked")
-            public <V extends View> V getView(@IdRes int viewId) {
-                View view = views.get(viewId);
-                if (view == null) {
-                    view = itemView.findViewById(viewId);
-                }
-                return (V) view;
-            }
         }
     }
 
     private void onAchieveMaxCount() {
-        showSnackBar("达到最大选择数量");
+        showSnackBar(getString(R.string.max_options));
     }
 
     private void showSnackBar(CharSequence text) {
