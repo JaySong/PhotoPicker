@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <item name="menu_camera" type="menu" />
-    <item name="menu_dir" type="menu" />
+    <item name="menu_camera" type="id" />
+    <item name="menu_dir" type="id" />
 </resources>

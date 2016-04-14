@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">PhotoPicker</string>
+    <string name="open_camera_fail">打开相机失败</string>
+    <string name="photo_save_fail">相片存储失败,请尝试其它相机功能APP进行拍照</string>
+    <string name="max_options">已达到最大选择数量</string>
 </resources>
