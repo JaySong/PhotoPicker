@@ -116,7 +116,7 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
                 toolbarCustomView = new TextView(this);
                 toolbarCustomView.setTextColor(Color.BLACK);
                 toolbarCustomView.setTextSize(20);
-                toolbarCustomView.setText(String.format(Locale.getDefault(),"%d/%d", resultPhotoUris.size(), maxSize));
+                toolbarCustomView.setText(String.format(Locale.getDefault(), "%d/%d", resultPhotoUris.size(), maxSize));
                 ActionBar.LayoutParams params = new ActionBar.LayoutParams(ActionBar.LayoutParams.WRAP_CONTENT, ActionBar.LayoutParams.WRAP_CONTENT);
                 params.gravity = Gravity.CENTER_HORIZONTAL;
                 actionBar.setCustomView(toolbarCustomView, params);
@@ -211,6 +211,7 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
 
         }
     }
+
     private void notifyChangePhotoList(String subTitle, List<Photo> photos) {
         currentDisplayPhotos = photos;
         toolbar.setSubtitle(subTitle);
@@ -248,13 +249,13 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
             } else {
                 showSnackBar(getString(R.string.open_camera_fail));
             }
-        } else if(item.getItemId() == R.id.menu_dir){
+        } else if (item.getItemId() == R.id.menu_dir) {
             SubMenu subMenu = item.getSubMenu();
             subMenu.clear();
             for (String text : menuDirs) {
                 subMenu.add(Menu.NONE, Menu.FIRST + 1, 0, text);
             }
-        }else {
+        } else {
             String menuTitle = item.getTitle().toString();
             List<Photo> photos = photoDirMap.get(menuTitle);
             if (photos != null) {
@@ -314,11 +315,11 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
         outState.putBoolean(IS_MULTI_SELECT, isMultiSelect);
         outState.putBoolean(IS_SHOW_GIF, isShowGif);
         outState.putInt(MAX_SELECT_SIZE, maxSize);
-        outState.putString("takePhotoPath",takePhotoFile.getAbsolutePath());
+        outState.putString("takePhotoPath", takePhotoFile.getAbsolutePath());
         if (isMultiSelect) {
-            outState.putStringArrayList(SELECT_RESULTS_ARRAY,resultPhotoUris);
-        }else{
-            outState.putString(SELECT_RESULTS,resultPhotoUri);
+            outState.putStringArrayList(SELECT_RESULTS_ARRAY, resultPhotoUris);
+        } else {
+            outState.putString(SELECT_RESULTS, resultPhotoUri);
         }
     }
 
@@ -331,12 +332,12 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
         String takePhotoPath = savedInstanceState.getString("takePhotoPath");
         if (!TextUtils.isEmpty(takePhotoPath)) {
             takePhotoFile = new File(takePhotoPath);
-        }else{
+        } else {
             showSnackBar(getString(R.string.photo_save_fail));
         }
         if (isMultiSelect) {
             resultPhotoUris = savedInstanceState.getStringArrayList(SELECT_RESULTS_ARRAY);
-        }else{
+        } else {
             resultPhotoUri = savedInstanceState.getString(SELECT_RESULTS);
         }
     }
@@ -410,30 +411,40 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
             @Override
             public void onClick(View v) {
                 CheckBox checkBox = (CheckBox) v;
-                if (isMultiSelect && maxSize == resultPhotoUris.size()) {
+                boolean checked = checkBox.isChecked();
+                if (isMultiSelect && maxSize == resultPhotoUris.size() && checked) {
                     onAchieveMaxCount();
                     checkBox.setChecked(false);
                     return;
                 }
-
                 int position = (int) v.getTag();
-                Photo photo = currentDisplayPhotos.get(position);
-                boolean checked = checkBox.isChecked();
+                Photo photo = photos.get(position);
                 photo.isChecked = checked;
-                String uri = photo.uri;
                 if (!isMultiSelect) {
                     //单选
-                    if (lastPhoto != null && !lastPhoto.equals(photo)) {
-                        lastPhoto.isChecked = false;
-                        photoListAdapter.notifyItemChanged(lastPosition);
+                    if (lastPhoto != null) {
+                        if (lastPhoto.equals(photo)) {
+                            //如果操作的是同一张图片
+                            lastPhoto = null;
+                            resultPhotoUri = null;
+                        }else{
+                            /** 选择的是另一个图片 把上一个取消选中 */
+                            lastPhoto.isChecked = false;
+                            notifyItemChanged(lastPosition);
+                            lastPhoto = photo;
+                            lastPosition = position;
+                        }
+                    }else{
+                        photo.isChecked = checked;
+                        lastPhoto = photo;
+                        lastPosition = position;
                     }
-                    lastPhoto = photo;
-                    lastPosition = position;
                     if (checked) {
-                        resultPhotoUri = uri;
+                        resultPhotoUri = photo.uri;
                     }
                 } else {
                     //多选
+                    String uri = photo.uri;
                     if (checked) {
                         //添加选中的图片Uri,条件:选中 + 结果集合中没有此Uri
                         if (!resultPhotoUris.contains(uri)) {
@@ -445,7 +456,7 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
                             resultPhotoUris.remove(uri);
                         }
                     }
-                    toolbarCustomView.setText(String.format(Locale.getDefault(),"%d/%d", resultPhotoUris.size(), maxSize));
+                    toolbarCustomView.setText(String.format(Locale.getDefault(), "%d/%d", resultPhotoUris.size(), maxSize));
                 }
             }
         };
