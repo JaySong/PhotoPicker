@@ -396,7 +396,7 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
         public void onBindViewHolder(PhotoVH holder, int position) {
             ImageView photoView = holder.ivPhoto;
             Photo photo = photos.get(position);
-            Glide.with(activity).load(photo.getShowUri()).thumbnail(.1f).centerCrop().crossFade().diskCacheStrategy(DiskCacheStrategy.RESULT).into(photoView);
+            Glide.with(activity).load(photo.uri).thumbnail(.1f).centerCrop().crossFade().diskCacheStrategy(DiskCacheStrategy.RESULT).into(photoView);
             CheckBox checkBox = holder.checkbox;
             checkBox.setChecked(photo.isChecked);
             checkBox.setTag(position);
