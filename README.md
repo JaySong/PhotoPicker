@@ -2,7 +2,7 @@
 一个属于material design风格的图片选择库
 
 # Image Show
-
+![此处输入图片的描述][1]       ![此处输入图片的描述][2]
 
 # 目录结构
 ```
@@ -81,9 +81,7 @@ protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
 ```
 
 # TouchImageView.java
-from github [TouchImageView][1]
-
-  [1]: https://github.com/MikeOrtiz/TouchImageView
+from github [TouchImageView][3]
 
 # PhotoPickerActivity.java
 核心类,负责加载本地所有图片并显示;
@@ -99,3 +97,8 @@ from github [TouchImageView][1]
  - 本项目用到了Toolbar,所以请大家在配置的时候至少请设置PhotoPickerActivity的Theme为NoActionBar样式
  - 上面提到的dependencies请保证添加
  - 本项目使用的icon为SVG格式,所以请保证做到SVG的支持
+
+
+  [1]: https://github.com/JaySong/PhotoPicker/blob/master/GIF/1.gif
+  [2]: https://github.com/JaySong/PhotoPicker/blob/master/GIF/2.gif
+  [3]: https://github.com/MikeOrtiz/TouchImageView
