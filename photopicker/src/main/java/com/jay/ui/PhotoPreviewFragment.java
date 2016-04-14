@@ -17,6 +17,7 @@ import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.jay.ui.entity.Photo;
 import com.jay.ui.widget.TouchImageView;
 
@@ -136,7 +137,7 @@ public class PhotoPreviewFragment extends Fragment implements ViewPager.OnPageCh
             Photo photo = mPhotos.get(position);
             Glide.with(PhotoPreviewFragment.this).load(photo.uri).thumbnail(0.1f)
                     .dontAnimate()
-                    .dontTransform()
+                    .dontTransform().diskCacheStrategy(DiskCacheStrategy.RESULT)
                     .override(800, 800).into(imageView);
             imageView.setOnClickListener(new View.OnClickListener() {
                 @Override
