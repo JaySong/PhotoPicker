@@ -2,7 +2,7 @@
 一个属于material design风格的图片选择库
 
 # Image Show
-![此处输入图片的描述][1]       ![此处输入图片的描述][2]
+![操作演示][1]
 
 # 目录结构
 ```
@@ -99,6 +99,5 @@ from github [TouchImageView][3]
  - 本项目使用的icon为SVG格式,所以请保证做到SVG的支持
 
 
-  [1]: https://github.com/JaySong/PhotoPicker/blob/master/GIF/1.gif
-  [2]: https://github.com/JaySong/PhotoPicker/blob/master/GIF/2.gif
+  [1]: https://github.com/JaySong/PhotoPicker/blob/master/1.gif
   [3]: https://github.com/MikeOrtiz/TouchImageView
