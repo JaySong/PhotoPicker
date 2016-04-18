@@ -106,3 +106,6 @@ from github [TouchImageView][3]
 
   [1]: https://github.com/JaySong/PhotoPicker/blob/master/1.gif
   [3]: https://github.com/MikeOrtiz/TouchImageView
+  
+# 关于
+CSDN Blog:http://blog.csdn.net/qJay_Dev/article/details/51182893
