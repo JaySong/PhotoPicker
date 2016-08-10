@@ -16,10 +16,7 @@ com.jay.ui
   |--PhotoPickerActivity.java
   |--PhotoPreviewFragment.java
 ```
-# add to project
-```
-compile 'com.jay.ui:photopicker:1.0.0'
-```
+
 
 # dependencies
 ```
