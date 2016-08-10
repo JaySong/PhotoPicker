@@ -176,22 +176,6 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
             }
             List<Photo> photos;
             do {
-//                String _id = data.getString(data.getColumnIndex(MediaStore.Images.ImageColumns._ID));
-//                Cursor cursor = contentResolver.query(
-//                        MediaStore.Images.Thumbnails.EXTERNAL_CONTENT_URI,
-//                        new String[]{MediaStore.Images.Thumbnails.DATA},
-//                        MediaStore.Images.Thumbnails.IMAGE_ID + "=?",
-//                        new String[]{_id}, null);
-//                String thumbnailsUri = null;
-//                if (cursor != null) {
-//                    try {
-//                        if (cursor.moveToFirst()) {
-//                            thumbnailsUri = cursor.getString(0);
-//                        }
-//                    } finally {
-//                        cursor.close();
-//                    }
-//                }
                 String photoDir = data.getString(data.getColumnIndex(MediaStore.Images.ImageColumns.BUCKET_DISPLAY_NAME));
                 String photoUri = data.getString(data.getColumnIndex(MediaStore.Images.Media.DATA));
                 if (!photoDirMap.containsKey(photoDir)) {
@@ -203,8 +187,13 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
                 }
                 Photo photo = new Photo();
 //                photo.thumbnailsUri = thumbnailsUri;
+                if (resultPhotoUris!= null && resultPhotoUris.contains(photoUri)) {
+                    photo.isChecked = true;
+                }
                 photo.uri = photoUri;
                 photos.add(photo);
+
+
                 allPhotoUris.add(photo);
             } while (data.moveToNext());
             notifyChangePhotoList(ALL_PHOTO_DIR_NAME, allPhotoUris);
@@ -352,9 +341,19 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
     private void exitAndOk() {
         Intent data = new Intent();
         if (isMultiSelect) {
-            data.putExtra(SELECT_RESULTS_ARRAY, resultPhotoUris);
+            if (resultPhotoUris != null && !resultPhotoUris.isEmpty()){
+                data.putExtra(SELECT_RESULTS_ARRAY, resultPhotoUris);
+            }else{
+                showSnackBar("没有选择任何图片,请至少选择一张图片");
+                return;
+            }
         } else {
-            data.putExtra(SELECT_RESULTS, resultPhotoUri);
+            if (!TextUtils.isEmpty(resultPhotoUri)){
+                data.putExtra(SELECT_RESULTS, resultPhotoUri);
+            }else{
+                showSnackBar("没有选择任何图片,请选择一张图片");
+                return;
+            }
         }
         setResult(RESULT_OK, data);
         finish();
@@ -399,7 +398,9 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
             Photo photo = photos.get(position);
             Glide.with(activity).load(photo.uri).thumbnail(.1f).centerCrop().crossFade().diskCacheStrategy(DiskCacheStrategy.RESULT).into(photoView);
             CheckBox checkBox = holder.checkbox;
+
             checkBox.setChecked(photo.isChecked);
+
             checkBox.setTag(position);
             checkBox.setOnClickListener(checkedChangeListener);
         }
