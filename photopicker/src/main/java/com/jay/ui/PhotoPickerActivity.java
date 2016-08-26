@@ -166,7 +166,7 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
 
     @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
-        if (data.moveToFirst()) {
+        if (data!=null&&data.moveToFirst()) {
             List<Photo> allPhotoUris = new ArrayList<>();
             if (!photoDirMap.containsKey(ALL_PHOTO_DIR_NAME)) {
                 photoDirMap.put(ALL_PHOTO_DIR_NAME, allPhotoUris);
@@ -187,7 +187,7 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
                 }
                 Photo photo = new Photo();
 //                photo.thumbnailsUri = thumbnailsUri;
-                if (resultPhotoUris!= null && resultPhotoUris.contains(photoUri)) {
+                if (resultPhotoUris != null && resultPhotoUris.contains(photoUri)) {
                     photo.isChecked = true;
                 }
                 photo.uri = photoUri;
@@ -304,7 +304,9 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
         outState.putBoolean(IS_MULTI_SELECT, isMultiSelect);
         outState.putBoolean(IS_SHOW_GIF, isShowGif);
         outState.putInt(MAX_SELECT_SIZE, maxSize);
-        outState.putString("takePhotoPath", takePhotoFile.getAbsolutePath());
+        if (null != takePhotoFile) {
+            outState.putString("takePhotoPath", takePhotoFile.getAbsolutePath());
+        }
         if (isMultiSelect) {
             outState.putStringArrayList(SELECT_RESULTS_ARRAY, resultPhotoUris);
         } else {
@@ -341,16 +343,16 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
     private void exitAndOk() {
         Intent data = new Intent();
         if (isMultiSelect) {
-            if (resultPhotoUris != null && !resultPhotoUris.isEmpty()){
+            if (resultPhotoUris != null && !resultPhotoUris.isEmpty()) {
                 data.putExtra(SELECT_RESULTS_ARRAY, resultPhotoUris);
-            }else{
+            } else {
                 showSnackBar("没有选择任何图片,请至少选择一张图片");
                 return;
             }
         } else {
-            if (!TextUtils.isEmpty(resultPhotoUri)){
+            if (!TextUtils.isEmpty(resultPhotoUri)) {
                 data.putExtra(SELECT_RESULTS, resultPhotoUri);
-            }else{
+            } else {
                 showSnackBar("没有选择任何图片,请选择一张图片");
                 return;
             }
@@ -428,14 +430,14 @@ public class PhotoPickerActivity extends AppCompatActivity implements LoaderMana
                             //如果操作的是同一张图片
                             lastPhoto = null;
                             resultPhotoUri = null;
-                        }else{
+                        } else {
                             /** 选择的是另一个图片 把上一个取消选中 */
                             lastPhoto.isChecked = false;
                             notifyItemChanged(lastPosition);
                             lastPhoto = photo;
                             lastPosition = position;
                         }
-                    }else{
+                    } else {
                         photo.isChecked = checked;
                         lastPhoto = photo;
                         lastPosition = position;
